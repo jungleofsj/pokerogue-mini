@@ -1,0 +1,31 @@
+{
+  "name": "pokerogue-mini",
+  "version": "1.0.0",
+  "description": "Small always-on-top desktop window for pokerogue.net",
+  "main": "main.js",
+  "author": "CanTuna",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "local.cantuna.pokerogue-mini",
+    "productName": "PokeRogueMini",
+    "files": [
+      "main.js",
+      "preload.js",
+      "toolbar.html"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "PokeRogueMini.exe"
+    }
+  }
+}

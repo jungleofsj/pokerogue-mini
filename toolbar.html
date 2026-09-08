@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; user-select: none; }
+  html, body { margin: 0; padding: 0; background: #141416; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    font-size: 11px;
+    color: #a8a8ad;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1px 7px;
+    padding: 2px 6px;
+    overflow: hidden;
+    /* the toolbar itself stays monochrome no matter what */
+    filter: grayscale(1);
+  }
+  button, select {
+    font: inherit;
+    line-height: 1.2;
+    color: #a8a8ad;
+    background: #202024;
+    border: 1px solid #2e2e33;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    flex: none;
+  }
+  select { padding: 1px 2px; }
+  button:hover, select:hover { background: #2a2a2f; color: #cfcfd4; }
+  button:active { background: #333338; }
+  button.on { background: #4a4a52; border-color: #5c5c64; color: #ececf0; }
+  .chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #202024;
+    border: 1px solid #2e2e33;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: ns-resize;
+    flex: none;
+  }
+  .chip:hover { background: #2a2a2f; }
+  .chip .k { color: #78787e; }
+  .chip .v { min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; color: #c4c4c9; }
+  .steps {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    bottom: 1px;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .chip:hover .steps { display: flex; }
+  .steps button {
+    font-size: 7px;
+    line-height: 1;
+    padding: 1px 3px;
+    border: none;
+    border-radius: 2px;
+    background: #3a3a40;
+  }
+  .steps button:hover { background: #4c4c54; color: #fff; }
+</style>
+</head>
+<body>
+  <select id="tone" title="화면 톤 (Ctrl+G: 컬러/톤 전환)">
+    <option value="none">컬러</option>
+    <option value="gray">흑백</option>
+    <option value="sepia">세피아</option>
+  </select>
+  <span class="chip" id="chip-toneAmount" title="톤 강도 — 휠 또는 ▲▼로 조절">
+    <span class="k">강</span><span class="v"></span><span class="steps"></span>
+  </span>
+  <span class="chip" id="chip-brightness" title="화면 밝기 (Ctrl+↑/↓) — 휠 또는 ▲▼로 조절">
+    <span class="k">밝</span><span class="v"></span><span class="steps"></span>
+  </span>
+  <span class="chip" id="chip-opacity" title="창 투명도 (Ctrl+←/→) — 휠 또는 ▲▼로 조절">
+    <span class="k">투</span><span class="v"></span><span class="steps"></span>
+  </span>
+  <button id="reload" title="게임 페이지 새로고침 (Ctrl+R)">⟳</button>
+  <button id="mute" title="음소거 (Ctrl+M) — 창이 비활성화되면 자동 음소거"></button>
+  <button id="preset" title="미니(우하단) ↔ 일반(중앙) 크기 전환 (Ctrl+P)">⇄</button>
+  <button id="top" title="창을 항상 다른 창 위에 표시 (Ctrl+T)">📌</button>
+  <button id="boss" title="창 숨기기 — 트레이 아이콘 클릭 또는 Ctrl+Alt+P로 복귀">숨김</button>
+<script>
+  const $ = id => document.getElementById(id);
+  let state = null;
+
+  // value chips: mouse wheel or hover ▲▼ buttons adjust in 5% steps
+  for (const key of ["toneAmount", "brightness", "opacity"]) {
+    const chip = $("chip-" + key);
+    const bump = d => state && window.mini.set({ [key]: state[key] + d });
+    chip.addEventListener("wheel", e => {
+      e.preventDefault();
+      bump(e.deltaY < 0 ? 5 : -5);
+    });
+    const steps = chip.querySelector(".steps");
+    for (const [glyph, d] of [["▲", 5], ["▼", -5]]) {
+      const b = document.createElement("button");
+      b.textContent = glyph;
+      b.addEventListener("click", () => bump(d));
+      steps.appendChild(b);
+    }
+  }
+
+  $("reload").addEventListener("click", () => window.mini.reload());
+  $("boss").addEventListener("click", () => window.mini.boss());
+  $("preset").addEventListener("click", () => window.mini.preset());
+  $("top").addEventListener("click", () => state && window.mini.set({ alwaysOnTop: !state.alwaysOnTop }));
+  $("mute").addEventListener("click", () => state && window.mini.set({ muted: !state.muted }));
+  $("tone").addEventListener("change", e => {
+    window.mini.set({ tone: e.target.value });
+    window.mini.focusGame();
+  });
+
+  // Keyboard input belongs to the game: any click on the toolbar hands
+  // focus straight back, and Tab/Esc jump to the game explicitly.
+  document.addEventListener("click", e => {
+    if (e.target.id !== "tone") {
+      window.mini.focusGame();
+    }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Tab" || e.key === "Escape") {
+      e.preventDefault();
+      window.mini.focusGame();
+    }
+  });
+
+  window.mini.onState(s => {
+    state = s;
+    $("tone").value = s.tone;
+    $("chip-toneAmount").style.display = s.tone === "none" ? "none" : "flex";
+    $("chip-toneAmount").querySelector(".v").textContent = s.toneAmount + "%";
+    $("chip-brightness").querySelector(".v").textContent = s.brightness + "%";
+    $("chip-opacity").querySelector(".v").textContent = s.opacity + "%";
+    $("top").classList.toggle("on", s.alwaysOnTop);
+    $("mute").classList.toggle("on", s.muted);
+    $("mute").textContent = s.muted ? "🔇" : "🔊";
+    // dim the toolbar together with the game
+    document.body.style.filter = `grayscale(1) brightness(${s.brightness / 100})`;
+  });
+
+  // Report the toolbar's real height (wrapped rows) so the game view
+  // can be laid out right below it.
+  const reportHeight = () => window.mini.height(Math.ceil(document.body.offsetHeight));
+  new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener("resize", reportHeight);
+  reportHeight();
+</script>
+</body>
+</html>
