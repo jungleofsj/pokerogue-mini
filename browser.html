@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #141416; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    font-size: 12px;
+    color: #a8a8ae;
+    display: grid;
+    grid-template-rows: 34px 1fr;
+    grid-template-columns: 34px auto 1fr;
+    filter: grayscale(1);
+    user-select: none;
+  }
+  /* ---- top bar (also the drag/title area) ---- */
+  #topbar {
+    grid-row: 1; grid-column: 1 / 4;
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 6px;
+    padding-right: calc(100vw - env(titlebar-area-width, 100vw) + 6px);
+    -webkit-app-region: drag;
+  }
+  #topbar button, #addr { -webkit-app-region: no-drag; }
+  button {
+    font: inherit; line-height: 1.2;
+    color: #7c7c82; background: #202024;
+    border: 1px solid #2e2e33; border-radius: 4px;
+    padding: 3px 8px; cursor: pointer; flex: none;
+  }
+  button:hover { background: #2a2a2f; color: #9a9aa0; }
+  button.on { background: #3c3c44; border-color: #4c4c54; color: #b4b4ba; }
+  #addr {
+    flex: 1; min-width: 60px;
+    font: inherit; color: #8e8e94;
+    background: #1c1c20; border: 1px solid #2e2e33; border-radius: 4px;
+    padding: 3px 8px; outline: none;
+  }
+  #addr:focus { border-color: #4c4c54; color: #a8a8ae; }
+  /* ---- left tab strip ---- */
+  #tabs {
+    grid-row: 2; grid-column: 1;
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 6px 4px; border-right: 1px solid #232327;
+  }
+  #tabs button { padding: 5px 0; text-align: center; }
+  /* ---- chat panel ---- */
+  #chat {
+    grid-row: 2; grid-column: 2;
+    width: 300px;
+    display: none;
+    flex-direction: column;
+    border-right: 1px solid #232327;
+    background: #17171a;
+  }
+  #chat.open { display: flex; }
+  #msgs {
+    flex: 1; overflow-y: auto;
+    padding: 8px;
+    font-size: 12.5px; line-height: 1.55;
+    user-select: text;
+  }
+  .m { margin-bottom: 10px; white-space: pre-wrap; word-break: break-word; }
+  .m.user {
+    color: #b8b8be; background: #202028;
+    border-radius: 6px; padding: 5px 8px;
+  }
+  .m.ai { color: #9e9ea6; }
+  .m.status { color: #62626a; font-style: italic; }
+  .m.err { color: #8a6a6a; }
+  #keyRow { display: none; padding: 8px; border-top: 1px solid #232327; }
+  #keyRow.show { display: block; }
+  #keyRow p { margin: 0 0 6px; font-size: 11px; color: #77777e; line-height: 1.5; }
+  #keyRow input {
+    width: 100%; font: inherit; color: #a8a8ae;
+    background: #1c1c20; border: 1px solid #2e2e33; border-radius: 4px;
+    padding: 4px 6px; outline: none; margin-bottom: 5px;
+  }
+  #inputRow { display: flex; gap: 5px; padding: 8px; border-top: 1px solid #232327; }
+  #chatInput {
+    flex: 1; resize: none;
+    font: inherit; font-size: 12.5px; line-height: 1.4;
+    color: #a8a8ae; background: #1c1c20;
+    border: 1px solid #2e2e33; border-radius: 5px;
+    padding: 5px 7px; outline: none;
+    height: 52px;
+  }
+  #chatInput:focus { border-color: #4c4c54; }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <button id="back" title="뒤로">◀</button>
+    <button id="fwd" title="앞으로">▶</button>
+    <button id="reload" title="새로고침 (Ctrl+R)">⟳</button>
+    <input id="addr" type="text" spellcheck="false" placeholder="주소 또는 검색어 (Ctrl+L)" />
+  </div>
+  <div id="tabs">
+    <button id="tabChat" title="Claude 공략 도우미">✳</button>
+  </div>
+  <div id="chat">
+    <div id="msgs"></div>
+    <div id="keyRow">
+      <p>Claude API 키가 필요합니다. console.anthropic.com에서 발급한 키를 입력하거나,
+      환경변수 ANTHROPIC_API_KEY를 설정하고 앱을 재시작하세요.</p>
+      <input id="keyInput" type="password" placeholder="sk-ant-..." />
+      <button id="keySave">키 저장</button>
+    </div>
+    <div id="inputRow">
+      <textarea id="chatInput" placeholder="주력 포켓몬 기술배치 등 질문 — Enter 전송, Shift+Enter 줄바꿈"></textarea>
+    </div>
+  </div>
+<script>
+  const $ = id => document.getElementById(id);
+  const msgs = $("msgs");
+
+  $("back").addEventListener("click", () => window.mb.nav("back"));
+  $("fwd").addEventListener("click", () => window.mb.nav("forward"));
+  $("reload").addEventListener("click", () => window.mb.reload());
+
+  const addr = $("addr");
+  addr.addEventListener("keydown", e => {
+    if (e.key === "Enter" && addr.value.trim()) {
+      window.mb.navigate(addr.value.trim());
+      window.mb.focusView();
+    } else if (e.key === "Escape") {
+      window.mb.focusView();
+    }
+  });
+  addr.addEventListener("focus", () => addr.select());
+  window.mb.onUrl(u => {
+    if (document.activeElement !== addr) {
+      addr.value = u;
+    }
+  });
+  window.mb.onFocusAddress(() => addr.focus());
+
+  // ---- chat ----
+  let chatOpen = false;
+  let currentAi = null;
+
+  $("tabChat").addEventListener("click", () => {
+    chatOpen = !chatOpen;
+    $("chat").classList.toggle("open", chatOpen);
+    $("tabChat").classList.toggle("on", chatOpen);
+    window.mb.chatToggle(chatOpen);
+    if (chatOpen) {
+      $("chatInput").focus();
+    }
+  });
+
+  function addMsg(cls, text) {
+    const d = document.createElement("div");
+    d.className = "m " + cls;
+    d.textContent = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  const input = $("chatInput");
+  input.addEventListener("keydown", e => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || currentAi) {
+        return;
+      }
+      addMsg("user", text);
+      input.value = "";
+      currentAi = addMsg("ai", "");
+      window.mb.chatSend(text);
+    }
+  });
+
+  let statusEl = null;
+  window.mb.onChatStatus(t => {
+    if (!statusEl) {
+      statusEl = addMsg("status", t);
+    } else {
+      statusEl.textContent = t;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  });
+  window.mb.onChatDelta(t => {
+    if (statusEl) {
+      statusEl.remove();
+      statusEl = null;
+    }
+    if (currentAi) {
+      currentAi.textContent += t;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  });
+  window.mb.onChatDone(() => {
+    if (statusEl) { statusEl.remove(); statusEl = null; }
+    if (currentAi && !currentAi.textContent) {
+      currentAi.remove();
+    }
+    currentAi = null;
+  });
+  window.mb.onChatError(m => {
+    if (statusEl) { statusEl.remove(); statusEl = null; }
+    if (currentAi && !currentAi.textContent) { currentAi.remove(); }
+    currentAi = null;
+    addMsg("err", "오류: " + m);
+  });
+  window.mb.onNeedKey(() => {
+    if (currentAi && !currentAi.textContent) { currentAi.remove(); }
+    currentAi = null;
+    $("keyRow").classList.add("show");
+  });
+  $("keySave").addEventListener("click", () => {
+    const k = $("keyInput").value.trim();
+    if (k) {
+      window.mb.setKey(k);
+      $("keyInput").value = "";
+      $("keyRow").classList.remove("show");
+      addMsg("status", "키가 저장되었습니다. 다시 질문해보세요.");
+    }
+  });
+</script>
+</body>
+</html>

@@ -8,20 +8,26 @@
   body {
     font-family: "Segoe UI", "Malgun Gothic", sans-serif;
     font-size: 11px;
-    color: #a8a8ad;
+    color: #7c7c82;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 1px 7px;
     padding: 2px 6px;
+    /* keep clear of the native window control buttons (top-right) */
+    padding-right: calc(100vw - env(titlebar-area-width, 100vw) + 6px);
+    min-height: 30px;
     overflow: hidden;
     /* the toolbar itself stays monochrome no matter what */
     filter: grayscale(1);
+    /* empty toolbar space acts as the title bar: draggable to move the window */
+    -webkit-app-region: drag;
   }
+  button, select, .chip { -webkit-app-region: no-drag; }
   button, select {
     font: inherit;
     line-height: 1.2;
-    color: #a8a8ad;
+    color: #7c7c82;
     background: #202024;
     border: 1px solid #2e2e33;
     border-radius: 4px;
@@ -30,9 +36,9 @@
     flex: none;
   }
   select { padding: 1px 2px; }
-  button:hover, select:hover { background: #2a2a2f; color: #cfcfd4; }
+  button:hover, select:hover { background: #2a2a2f; color: #9a9aa0; }
   button:active { background: #333338; }
-  button.on { background: #4a4a52; border-color: #5c5c64; color: #ececf0; }
+  button.on { background: #3c3c44; border-color: #4c4c54; color: #b4b4ba; }
   .chip {
     position: relative;
     display: flex;
@@ -46,8 +52,8 @@
     flex: none;
   }
   .chip:hover { background: #2a2a2f; }
-  .chip .k { color: #78787e; }
-  .chip .v { min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; color: #c4c4c9; }
+  .chip .k { color: #5e5e64; }
+  .chip .v { min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; color: #8e8e94; }
   .steps {
     position: absolute;
     right: 1px;
@@ -66,7 +72,7 @@
     border-radius: 2px;
     background: #3a3a40;
   }
-  .steps button:hover { background: #4c4c54; color: #fff; }
+  .steps button:hover { background: #4c4c54; color: #b4b4ba; }
 </style>
 </head>
 <body>
@@ -84,7 +90,8 @@
   <span class="chip" id="chip-opacity" title="창 투명도 (Ctrl+←/→) — 휠 또는 ▲▼로 조절">
     <span class="k">투</span><span class="v"></span><span class="steps"></span>
   </span>
-  <button id="reload" title="게임 페이지 새로고침 (Ctrl+R)">⟳</button>
+  <button id="reload" title="게임 새로고침 (Ctrl+R)">⟳</button>
+  <button id="web" title="브라우저 창 열기 — 게임은 계속 실행됩니다 (Ctrl+L)">🌐</button>
   <button id="mute" title="음소거 (Ctrl+M) — 창이 비활성화되면 자동 음소거"></button>
   <button id="preset" title="미니(우하단) ↔ 일반(중앙) 크기 전환 (Ctrl+P)">⇄</button>
   <button id="top" title="창을 항상 다른 창 위에 표시 (Ctrl+T)">📌</button>
@@ -111,6 +118,7 @@
   }
 
   $("reload").addEventListener("click", () => window.mini.reload());
+  $("web").addEventListener("click", () => window.mini.openBrowser());
   $("boss").addEventListener("click", () => window.mini.boss());
   $("preset").addEventListener("click", () => window.mini.preset());
   $("top").addEventListener("click", () => state && window.mini.set({ alwaysOnTop: !state.alwaysOnTop }));

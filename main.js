@@ -34,6 +34,7 @@ const {
 } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const browser = require("./browser");
 
 const HOME_URL = "https://pokerogue.net/";
 // Present as a plain Chrome browser so Google/Discord OAuth login pages don't
@@ -64,6 +65,8 @@ let settings = {
   opacity: 100,
   muted: true,
   alwaysOnTop: false,
+  claudeApiKey: "",
+  browserBounds: null,
 };
 
 function loadSettings() {
@@ -241,6 +244,8 @@ function attachHotkeys(wc) {
       updateSettings({ opacity: settings.opacity + STEP });
     } else if (key === "r") {
       gameView.webContents.reload();
+    } else if (key === "l") {
+      browser.open(null, true);
     } else {
       return;
     }
@@ -268,6 +273,9 @@ function createWindow() {
     backgroundColor: "#1b1b1f",
     alwaysOnTop: settings.alwaysOnTop,
     title: "PokeRogue Mini",
+    // no native caption text; the toolbar doubles as the (dark) title bar
+    titleBarStyle: "hidden",
+    titleBarOverlay: { color: "#141416", symbolColor: "#7c7c82", height: 30 },
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -376,6 +384,7 @@ if (!gotLock) {
   ipcMain.on("boss", toggleBossKey);
   ipcMain.on("preset", togglePreset);
   ipcMain.on("focus-game", () => gameView && gameView.webContents.focus());
+  ipcMain.on("open-browser", (_e, url, focusAddress) => browser.open(url, focusAddress));
   ipcMain.on("toolbar-height", (_e, h) => {
     const clamped = Math.min(Math.max(Math.round(h), 20), 120);
     if (clamped !== toolbarHeight) {
@@ -386,6 +395,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     loadSettings();
+    browser.init({ settings, save: saveSettings });
     createWindow();
     createTray();
     globalShortcut.register("Control+Alt+P", toggleBossKey);

@@ -19,7 +19,11 @@
     "files": [
       "main.js",
       "preload.js",
-      "toolbar.html"
+      "toolbar.html",
+      "browser.js",
+      "browser-preload.js",
+      "browser.html",
+      "web-preload.js"
     ],
     "win": {
       "target": "portable"
@@ -27,5 +31,8 @@
     "portable": {
       "artifactName": "PokeRogueMini.exe"
     }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0"
   }
 }
