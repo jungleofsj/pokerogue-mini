@@ -11,13 +11,13 @@
     color: #7c7c82;
     display: grid;
     grid-template-rows: auto 1fr;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr;
     /* the chrome stays monochrome no matter what */
     filter: grayscale(1);
   }
+  #chrome { grid-row: 1; grid-column: 1 / 3; }
   /* ---- top toolbar (also the title/drag bar) ---- */
   #bar {
-    grid-row: 1; grid-column: 1 / 3;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -80,90 +80,148 @@
     background: #3a3a40;
   }
   .steps button:hover { background: #4c4c54; color: #b4b4ba; }
-  /* ---- Claude chat panel, attached to the right of the game ---- */
+  /* ---- tab strip ---- */
+  #tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 2px 6px 0;
+    height: 24px;
+    overflow: hidden;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 4px;
+    max-width: 140px; min-width: 40px;
+    padding: 3px 6px 3px 8px;
+    font-size: 10.5px;
+    background: #1c1c20;
+    border: 1px solid #2a2a2f; border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    color: #6a6a71;
+    cursor: pointer;
+    flex: 0 1 auto;
+    overflow: hidden;
+  }
+  .tab.active { background: #232329; color: #a0a0a8; }
+  .tab .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tab .x {
+    flex: none; width: 13px; height: 13px; line-height: 11px;
+    text-align: center; border-radius: 3px; font-size: 11px; color: #55555c;
+  }
+  .tab .x:hover { background: #3a3a42; color: #b4b4ba; }
+  #newTab {
+    flex: none; width: 20px; height: 18px; margin-bottom: 1px;
+    border: none; border-radius: 4px;
+    background: transparent; color: #55555c;
+    font-size: 12px; cursor: pointer; padding: 0;
+  }
+  #newTab:hover { background: #26262c; color: #9a9aa0; }
+  /* ---- address row (web tabs only) ---- */
+  #addrRow {
+    display: none;
+    align-items: center; gap: 4px;
+    padding: 3px 6px;
+    background: #232329;
+  }
+  #addrRow.show { display: flex; }
+  #addrRow button { padding: 1px 6px; }
+  #addr {
+    flex: 1; min-width: 40px;
+    font: inherit; font-size: 10.5px; color: #8e8e94;
+    background: #1a1a1e; border: 1px solid #2e2e33; border-radius: 4px;
+    padding: 2px 7px; outline: none;
+  }
+  #addr:focus { border-color: #4c4c54; color: #a8a8ae; }
+  /* ---- Claude panel, attached to the LEFT of the content ---- */
   #chatPanel {
-    grid-row: 2; grid-column: 2;
-    width: 280px;
+    grid-row: 2; grid-column: 1;
+    width: 240px;
     display: none;
     flex-direction: column;
-    border-left: 1px solid #232327;
+    border-right: 1px solid #232327;
     background: #17171a;
   }
   #chatPanel.open { display: flex; }
-  #pickup { border-bottom: 1px solid #232327; padding: 7px 8px 5px; flex: none; }
-  #pickupHead { font-size: 11px; color: #77777e; margin-bottom: 4px; }
-  #pickupNote { color: #55555c; font-size: 10px; }
-  #pickupList { display: flex; flex-direction: column; }
+  /* compact pickup strip: icons + dates only */
+  #pickup { border-bottom: 1px solid #232327; padding: 5px 6px 3px; flex: none; }
+  #pickupList { display: flex; justify-content: space-between; }
   .pk {
-    display: flex; align-items: center; gap: 7px;
-    padding: 1px 2px; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 1px 1px 0; border-radius: 4px;
   }
-  .pk.today { background: #222230; }
-  .pk img { width: 30px; height: 30px; image-rendering: pixelated; flex: none; }
-  .pk .d { width: 34px; color: #62626a; font-variant-numeric: tabular-nums; flex: none; }
-  .pk .n { color: #9e9ea6; font-size: 12px; }
-  .pk.today .n { color: #c0c0c8; }
+  .pk.today { background: #242430; }
+  .pk img { width: 22px; height: 22px; image-rendering: pixelated; }
+  .pk .d { font-size: 8.5px; color: #5c5c63; line-height: 1.2; }
+  .pk.today .d { color: #9a9ab0; }
   #msgs {
     flex: 1; overflow-y: auto;
-    padding: 8px;
-    font-size: 12.5px; line-height: 1.55;
+    padding: 7px;
+    font-size: 11px; line-height: 1.5;
     user-select: text;
   }
-  .m { margin-bottom: 10px; white-space: pre-wrap; word-break: break-word; }
+  .m { margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
   .m.user {
-    color: #b8b8be; background: #202028;
-    border-radius: 6px; padding: 5px 8px;
+    color: #b0b0b6; background: #202028;
+    border-radius: 5px; padding: 4px 7px;
   }
-  .m.ai { color: #9e9ea6; }
-  .m.status { color: #62626a; font-style: italic; }
+  .m.ai { color: #96969e; }
+  .m.status { color: #5c5c63; font-style: italic; }
   .m.err { color: #8a6a6a; }
-  #keyRow { display: none; padding: 8px; border-top: 1px solid #232327; }
+  #keyRow { display: none; padding: 7px; border-top: 1px solid #232327; }
   #keyRow.show { display: block; }
-  #keyRow p { margin: 0 0 6px; font-size: 11px; color: #77777e; line-height: 1.5; }
+  #keyRow p { margin: 0 0 5px; font-size: 10px; color: #6e6e75; line-height: 1.5; }
   #keyRow input {
     width: 100%; font: inherit; color: #a8a8ae;
     background: #1c1c20; border: 1px solid #2e2e33; border-radius: 4px;
-    padding: 4px 6px; outline: none; margin-bottom: 5px;
+    padding: 3px 6px; outline: none; margin-bottom: 4px;
   }
-  #inputRow { display: flex; padding: 8px; border-top: 1px solid #232327; }
+  #inputRow { display: flex; padding: 6px; border-top: 1px solid #232327; }
   #chatInput {
     flex: 1; resize: none;
-    font: inherit; font-size: 12.5px; line-height: 1.4;
+    font: inherit; font-size: 11px; line-height: 1.4;
     color: #a8a8ae; background: #1c1c20;
     border: 1px solid #2e2e33; border-radius: 5px;
-    padding: 5px 7px; outline: none;
-    height: 52px;
+    padding: 4px 6px; outline: none;
+    height: 44px;
   }
   #chatInput:focus { border-color: #4c4c54; }
 </style>
 </head>
 <body>
-  <div id="bar">
-    <select id="tone" title="화면 톤 (Ctrl+G: 컬러/톤 전환)">
-      <option value="none">컬러</option>
-      <option value="gray">흑백</option>
-      <option value="sepia">세피아</option>
-    </select>
-    <span class="chip" id="chip-toneAmount" title="톤 강도 — 휠 또는 ▲▼로 조절">
-      <span class="k">강</span><span class="v"></span><span class="steps"></span>
-    </span>
-    <span class="chip" id="chip-brightness" title="화면 밝기 (Ctrl+↑/↓) — 휠 또는 ▲▼로 조절">
-      <span class="k">밝</span><span class="v"></span><span class="steps"></span>
-    </span>
-    <span class="chip" id="chip-opacity" title="창 투명도 (Ctrl+←/→) — 휠 또는 ▲▼로 조절">
-      <span class="k">투</span><span class="v"></span><span class="steps"></span>
-    </span>
-    <button id="reload" title="게임 새로고침 (Ctrl+R)">⟳</button>
-    <button id="web" title="브라우저 창 열기 — 게임은 계속 실행됩니다 (Ctrl+L)">🌐</button>
-    <button id="chat" title="Claude 공략 도우미 패널">✳</button>
-    <button id="mute" title="음소거 (Ctrl+M) — 창이 비활성화되면 자동 음소거"></button>
-    <button id="preset" title="미니(우하단) ↔ 일반(중앙) 크기 전환 (Ctrl+P)">⇄</button>
-    <button id="top" title="창을 항상 다른 창 위에 표시 (Ctrl+T)">📌</button>
-    <button id="boss" title="창 숨기기 — 트레이 아이콘 클릭 또는 Ctrl+Alt+P로 복귀">숨김</button>
+  <div id="chrome">
+    <div id="bar">
+      <select id="tone" title="화면 톤 (Ctrl+G: 컬러/톤 전환)">
+        <option value="none">컬러</option>
+        <option value="gray">흑백</option>
+        <option value="sepia">세피아</option>
+      </select>
+      <span class="chip" id="chip-toneAmount" title="톤 강도 — 휠 또는 ▲▼로 조절">
+        <span class="k">강</span><span class="v"></span><span class="steps"></span>
+      </span>
+      <span class="chip" id="chip-brightness" title="화면 밝기 (Ctrl+↑/↓) — 휠 또는 ▲▼로 조절">
+        <span class="k">밝</span><span class="v"></span><span class="steps"></span>
+      </span>
+      <span class="chip" id="chip-opacity" title="창 투명도 (Ctrl+←/→) — 휠 또는 ▲▼로 조절">
+        <span class="k">투</span><span class="v"></span><span class="steps"></span>
+      </span>
+      <button id="reload" title="현재 탭 새로고침 (Ctrl+R)">⟳</button>
+      <button id="chat" title="Claude 공략 도우미 + 주간 픽업 패널">✳</button>
+      <button id="mute" title="음소거 (Ctrl+M) — 창이 비활성화되면 자동 음소거"></button>
+      <button id="preset" title="미니(우하단) ↔ 일반(중앙) 크기 전환 (Ctrl+P)">⇄</button>
+      <button id="top" title="창을 항상 다른 창 위에 표시 (Ctrl+Shift+T)">📌</button>
+      <button id="boss" title="창 숨기기 — 트레이 아이콘 클릭 또는 Ctrl+Alt+P로 복귀">숨김</button>
+    </div>
+    <div id="tabs">
+      <button id="newTab" title="새 웹 탭 (Ctrl+T)">＋</button>
+    </div>
+    <div id="addrRow">
+      <button id="back" title="뒤로">◀</button>
+      <button id="fwd" title="앞으로">▶</button>
+      <input id="addr" type="text" spellcheck="false" placeholder="주소 또는 검색어 (Ctrl+L) — Ctrl+휠: 좌우 스크롤" />
+    </div>
   </div>
   <div id="chatPanel">
-    <div id="pickup">
-      <div id="pickupHead">주간 전설 픽업 <span id="pickupNote">(00:00 UTC = 오전 9시 교체)</span></div>
+    <div id="pickup" title="주간 전설 픽업 (오전 9시 교체)">
       <div id="pickupList"></div>
     </div>
     <div id="msgs"></div>
@@ -174,7 +232,7 @@
       <button id="keySave">키 저장</button>
     </div>
     <div id="inputRow">
-      <textarea id="chatInput" placeholder="주력 포켓몬 기술배치 등 질문 — Enter 전송, Shift+Enter 줄바꿈"></textarea>
+      <textarea id="chatInput" placeholder="질문 — Enter 전송, Shift+Enter 줄바꿈"></textarea>
     </div>
   </div>
 <script>
@@ -199,7 +257,6 @@
   }
 
   $("reload").addEventListener("click", () => window.mini.reload());
-  $("web").addEventListener("click", () => window.mini.openBrowser());
   $("boss").addEventListener("click", () => window.mini.boss());
   $("preset").addEventListener("click", () => window.mini.preset());
   $("top").addEventListener("click", () => state && window.mini.set({ alwaysOnTop: !state.alwaysOnTop }));
@@ -209,15 +266,15 @@
     window.mini.focusGame();
   });
 
-  // Keyboard input belongs to the game: clicks on the toolbar hand focus
-  // straight back (the chat panel is exempt), and Tab/Esc jump to the game.
+  // Keyboard input belongs to the active tab: clicks on the chrome hand focus
+  // straight back (chat panel and address bar are exempt).
   document.addEventListener("click", e => {
-    if (e.target.id !== "tone" && !e.target.closest("#chatPanel")) {
+    if (e.target.id !== "tone" && !e.target.closest("#chatPanel") && !e.target.closest("#addrRow")) {
       window.mini.focusGame();
     }
   });
   document.addEventListener("keydown", e => {
-    if ((e.key === "Tab" || e.key === "Escape") && !e.target.closest("#chatPanel")) {
+    if ((e.key === "Tab" || e.key === "Escape") && !e.target.closest("#chatPanel") && !e.target.closest("#addrRow")) {
       e.preventDefault();
       window.mini.focusGame();
     }
@@ -233,24 +290,82 @@
     $("top").classList.toggle("on", s.alwaysOnTop);
     $("mute").classList.toggle("on", s.muted);
     $("mute").textContent = s.muted ? "🔇" : "🔊";
-    // dim the chrome (toolbar + chat panel) together with the game
+    // dim the chrome (toolbar + panel) together with the game
     document.body.style.filter = `grayscale(1) brightness(${s.brightness / 100})`;
   });
 
-  // Report the toolbar's real height (wrapped rows) so the game view
-  // can be laid out right below it.
-  const bar = $("bar");
-  const reportHeight = () => window.mini.height(Math.ceil(bar.offsetHeight));
-  new ResizeObserver(reportHeight).observe(bar);
+  // ---- tabs ----
+  const tabsEl = $("tabs");
+  const newTabBtn = $("newTab");
+  newTabBtn.addEventListener("click", () => window.mini.tabNew());
+
+  window.mini.onTabs(tabs => {
+    for (const el of tabsEl.querySelectorAll(".tab")) {
+      el.remove();
+    }
+    let webActive = false;
+    for (const t of tabs) {
+      const el = document.createElement("div");
+      el.className = "tab" + (t.active ? " active" : "");
+      el.title = t.title;
+      const title = document.createElement("span");
+      title.className = "t";
+      title.textContent = t.title;
+      el.appendChild(title);
+      if (t.id !== "game") {
+        const x = document.createElement("span");
+        x.className = "x";
+        x.textContent = "×";
+        x.title = "탭 닫기 (Ctrl+W)";
+        x.addEventListener("click", e => {
+          e.stopPropagation();
+          window.mini.tabClose(t.id);
+        });
+        el.appendChild(x);
+        el.addEventListener("auxclick", e => {
+          if (e.button === 1) {
+            window.mini.tabClose(t.id);
+          }
+        });
+        if (t.active) {
+          webActive = true;
+        }
+      }
+      el.addEventListener("click", () => window.mini.tabActivate(t.id));
+      tabsEl.insertBefore(el, newTabBtn);
+    }
+    $("addrRow").classList.toggle("show", webActive);
+  });
+
+  const addr = $("addr");
+  $("back").addEventListener("click", () => window.mini.nav("back"));
+  $("fwd").addEventListener("click", () => window.mini.nav("forward"));
+  addr.addEventListener("keydown", e => {
+    e.stopPropagation();
+    if (e.key === "Enter" && addr.value.trim()) {
+      window.mini.navigate(addr.value.trim());
+      window.mini.focusGame();
+    } else if (e.key === "Escape") {
+      window.mini.focusGame();
+    }
+  });
+  addr.addEventListener("focus", () => addr.select());
+  window.mini.onUrl(u => {
+    if (document.activeElement !== addr) {
+      addr.value = u;
+    }
+  });
+  window.mini.onFocusAddress(() => addr.focus());
+
+  // Report the chrome's real height (toolbar + tabs + address row) so the
+  // content views can be laid out right below it.
+  const chrome = $("chrome");
+  const reportHeight = () => window.mini.height(Math.ceil(chrome.offsetHeight));
+  new ResizeObserver(reportHeight).observe(chrome);
   window.addEventListener("resize", reportHeight);
   reportHeight();
 
-  // ---- Claude chat panel ----
-  const msgs = $("msgs");
-  let chatOpen = false;
-  let currentAi = null;
-  let statusEl = null;
-
+  // ---- pickup strip (icons + dates only) ----
   let pickupLoadedDay = null;
   async function loadPickup() {
     const today = new Date().toDateString();
@@ -262,26 +377,29 @@
       const list = $("pickupList");
       list.textContent = "";
       for (const p of week) {
-        const row = document.createElement("div");
-        row.className = "pk" + (p.today ? " today" : "");
-        row.title = `${p.ko} (${p.en})`;
+        const cell = document.createElement("div");
+        cell.className = "pk" + (p.today ? " today" : "");
+        cell.title = `${p.month}/${p.day} ${p.ko} (${p.en})${p.today ? " — 오늘" : ""}`;
         const img = document.createElement("img");
         img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
-        img.alt = "";
+        img.alt = p.ko;
         const d = document.createElement("span");
         d.className = "d";
         d.textContent = `${p.month}/${p.day}`;
-        const n = document.createElement("span");
-        n.className = "n";
-        n.textContent = p.ko + (p.today ? " ← 오늘" : "");
-        row.append(img, d, n);
-        list.appendChild(row);
+        cell.append(img, d);
+        list.appendChild(cell);
       }
       pickupLoadedDay = today;
     } catch {
       /* pickup list is best-effort */
     }
   }
+
+  // ---- Claude chat panel ----
+  const msgs = $("msgs");
+  let chatOpen = false;
+  let currentAi = null;
+  let statusEl = null;
 
   $("chat").addEventListener("click", () => {
     chatOpen = !chatOpen;
