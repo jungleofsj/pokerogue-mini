@@ -1,30 +1,19 @@
 /*
- * Companion browser window: browse wikis/calendars while the game keeps
- * running in the main window, plus a Claude-powered strategy chat sidebar.
+ * Companion browser window with Chrome-style top tabs: browse wikis and
+ * pickup calendars while the game keeps running in the main window.
  */
-const { BrowserWindow, WebContentsView, ipcMain, shell } = require("electron");
+const { BrowserWindow, WebContentsView, ipcMain } = require("electron");
 const path = require("path");
 
-const TOPBAR_H = 34;
-const TABSTRIP_W = 34;
-const CHAT_W = 300;
+const TABBAR_H = 30;
+const ADDRBAR_H = 34;
 const HOME_URL = "https://wiki.pokerogue.net/";
-
-const SYSTEM_PROMPT =
-  "당신은 PokéRogue(포켓로그, pokerogue.net) 공략 도우미입니다. " +
-  "사용자의 주력 포켓몬(주로 전설)의 기술 배치, 성격, 아이템, 상성 등을 간결한 한국어로 조언합니다. " +
-  "PokéRogue는 본가 포켓몬과 다른 점이 많습니다(스타터 코스트, 패시브 특성, 융합, 바이옴 진행, " +
-  "월별 전설 알 픽업 로테이션 등). 게임 사양이 확실하지 않으면 웹 검색으로 wiki.pokerogue.net 등을 " +
-  "확인한 뒤 답하세요. 답변은 짧고 실용적으로, 목록 위주로 작성하세요.";
 
 let deps = null; // { settings, save }
 let win = null;
-let view = null;
-let chatOpen = false;
-
-let anthropicClient = null;
-const chatHistory = [];
-let chatBusy = false;
+let tabs = []; // { id, view }
+let activeId = null;
+let nextId = 1;
 
 function init(d) {
   deps = d;
@@ -42,19 +31,148 @@ function normalizeUrl(input) {
   return target;
 }
 
+function activeTab() {
+  return tabs.find(t => t.id === activeId) || null;
+}
+
+function panelSend(channel, payload) {
+  if (win && !win.webContents.isDestroyed()) {
+    win.webContents.send(channel, payload);
+  }
+}
+
 function layout() {
-  if (!win || !view) {
+  if (!win) {
     return;
   }
   const [w, h] = win.getContentSize();
-  const left = TABSTRIP_W + (chatOpen ? CHAT_W : 0);
-  view.setBounds({ x: left, y: TOPBAR_H, width: Math.max(0, w - left), height: Math.max(0, h - TOPBAR_H) });
+  const top = TABBAR_H + ADDRBAR_H;
+  for (const t of tabs) {
+    t.view.setBounds({ x: 0, y: top, width: w, height: Math.max(0, h - top) });
+  }
+}
+
+function sendTabs() {
+  panelSend(
+    "tabs",
+    tabs.map(t => ({
+      id: t.id,
+      title: t.view.webContents.getTitle() || t.view.webContents.getURL() || "새 탭",
+      active: t.id === activeId,
+    })),
+  );
 }
 
 function sendUrl() {
-  if (win && !win.webContents.isDestroyed()) {
-    win.webContents.send("url", view.webContents.getURL());
+  const t = activeTab();
+  panelSend("url", t ? t.view.webContents.getURL() : "");
+}
+
+function activate(id) {
+  if (!tabs.some(t => t.id === id)) {
+    return;
   }
+  activeId = id;
+  for (const t of tabs) {
+    t.view.setVisible(t.id === id);
+  }
+  sendTabs();
+  sendUrl();
+  const t = activeTab();
+  if (t) {
+    t.view.webContents.focus();
+  }
+}
+
+function newTab(url, background = false) {
+  const view = new WebContentsView({
+    webPreferences: {
+      partition: "persist:pokerogue-browser",
+      preload: path.join(__dirname, "web-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  const id = nextId++;
+  tabs.push({ id, view });
+  win.contentView.addChildView(view);
+  view.setVisible(false);
+  layout();
+
+  const wc = view.webContents;
+  wc.setWindowOpenHandler(({ url: u }) => {
+    newTab(u);
+    return { action: "deny" };
+  });
+  const refresh = () => {
+    sendTabs();
+    if (id === activeId) {
+      sendUrl();
+    }
+  };
+  wc.on("did-navigate", refresh);
+  wc.on("did-navigate-in-page", refresh);
+  wc.on("page-title-updated", sendTabs);
+  attachHotkeys(wc);
+
+  wc.loadURL(normalizeUrl(url || HOME_URL)).catch(() => {});
+  if (!background) {
+    activate(id);
+  } else {
+    sendTabs();
+  }
+  return id;
+}
+
+function closeTab(id) {
+  const idx = tabs.findIndex(t => t.id === id);
+  if (idx === -1) {
+    return;
+  }
+  const [t] = tabs.splice(idx, 1);
+  win.contentView.removeChildView(t.view);
+  t.view.webContents.close();
+  if (tabs.length === 0) {
+    win.close();
+    return;
+  }
+  if (activeId === id) {
+    activate(tabs[Math.min(idx, tabs.length - 1)].id);
+  } else {
+    sendTabs();
+  }
+}
+
+function cycleTab(dir) {
+  if (tabs.length < 2) {
+    return;
+  }
+  const idx = tabs.findIndex(t => t.id === activeId);
+  activate(tabs[(idx + dir + tabs.length) % tabs.length].id);
+}
+
+function attachHotkeys(wc) {
+  wc.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown" || !input.control || input.alt || input.meta || input.isAutoRepeat) {
+      return;
+    }
+    const key = input.key.toLowerCase();
+    if (key === "l") {
+      panelSend("focus-address");
+      win.webContents.focus();
+    } else if (key === "r") {
+      activeTab()?.view.webContents.reload();
+    } else if (key === "t") {
+      newTab(HOME_URL);
+    } else if (key === "w") {
+      closeTab(activeId);
+    } else if (key === "tab") {
+      cycleTab(input.shift ? -1 : 1);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  });
 }
 
 function create() {
@@ -67,7 +185,7 @@ function create() {
     backgroundColor: "#141416",
     title: "PokeRogue Mini Browser",
     titleBarStyle: "hidden",
-    titleBarOverlay: { color: "#141416", symbolColor: "#7c7c82", height: 34 },
+    titleBarOverlay: { color: "#141416", symbolColor: "#7c7c82", height: TABBAR_H },
     webPreferences: {
       preload: path.join(__dirname, "browser-preload.js"),
       contextIsolation: true,
@@ -76,167 +194,50 @@ function create() {
   });
   win.setMenu(null);
   win.loadFile(path.join(__dirname, "browser.html"));
-
-  view = new WebContentsView({
-    webPreferences: {
-      partition: "persist:pokerogue-browser",
-      preload: path.join(__dirname, "web-preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-  win.contentView.addChildView(view);
-  layout();
   win.on("resize", layout);
-
-  // target=_blank etc. stay inside this browser view
-  view.webContents.setWindowOpenHandler(({ url }) => {
-    view.webContents.loadURL(url).catch(() => {});
-    return { action: "deny" };
-  });
-  view.webContents.on("did-navigate", sendUrl);
-  view.webContents.on("did-navigate-in-page", sendUrl);
-
-  const hotkeys = wc =>
-    wc.on("before-input-event", (event, input) => {
-      if (input.type !== "keyDown" || !input.control || input.alt || input.meta || input.isAutoRepeat) {
-        return;
-      }
-      const key = input.key.toLowerCase();
-      if (key === "l") {
-        win.webContents.send("focus-address");
-        win.webContents.focus();
-      } else if (key === "r") {
-        view.webContents.reload();
-      } else {
-        return;
-      }
-      event.preventDefault();
-    });
-  hotkeys(view.webContents);
-  hotkeys(win.webContents);
+  attachHotkeys(win.webContents);
 
   win.on("close", () => {
     deps.settings.browserBounds = win.getBounds();
     deps.save();
   });
   win.on("closed", () => {
+    for (const t of tabs) {
+      t.view.webContents.close();
+    }
+    tabs = [];
+    activeId = null;
     win = null;
-    view = null;
-    chatOpen = false;
   });
-
-  view.webContents.loadURL(HOME_URL).catch(() => {});
 }
 
 function open(url, focusAddress) {
   if (!win) {
     create();
-  }
-  if (win.isMinimized()) {
-    win.restore();
+    newTab(url || HOME_URL);
+  } else {
+    if (win.isMinimized()) {
+      win.restore();
+    }
+    if (url) {
+      newTab(url);
+    }
   }
   win.show();
   win.focus();
-  if (url) {
-    view.webContents.loadURL(normalizeUrl(url)).catch(() => {});
-  }
   if (focusAddress) {
-    win.webContents.send("focus-address");
+    panelSend("focus-address");
     win.webContents.focus();
-  }
-}
-
-// ---- Claude chat ----
-
-function panelSend(channel, payload) {
-  if (win && !win.webContents.isDestroyed()) {
-    win.webContents.send(channel, payload);
-  }
-}
-
-function getClient() {
-  if (anthropicClient) {
-    return anthropicClient;
-  }
-  const { Anthropic } = require("@anthropic-ai/sdk");
-  const opts = {};
-  if (deps.settings.claudeApiKey) {
-    opts.apiKey = deps.settings.claudeApiKey;
-  }
-  // With no stored key, the SDK resolves ANTHROPIC_API_KEY etc. from the
-  // environment; if nothing is found the constructor throws.
-  anthropicClient = new Anthropic(opts);
-  return anthropicClient;
-}
-
-async function runChat(text) {
-  if (chatBusy) {
-    panelSend("chat-error", "이전 답변이 아직 진행 중입니다.");
-    return;
-  }
-  let client;
-  try {
-    client = getClient();
-  } catch {
-    panelSend("chat-need-key");
-    return;
-  }
-  chatBusy = true;
-  chatHistory.push({ role: "user", content: text });
-  // keep the last ~12 turns so history doesn't grow unbounded
-  while (chatHistory.length > 24) {
-    chatHistory.shift();
-  }
-  if (chatHistory[0].role !== "user") {
-    chatHistory.shift();
-  }
-  try {
-    for (let i = 0; i < 5; i++) {
-      const stream = client.messages.stream({
-        model: "claude-opus-5",
-        max_tokens: 8000,
-        system: SYSTEM_PROMPT,
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
-        messages: chatHistory,
-      });
-      stream.on("text", t => panelSend("chat-delta", t));
-      stream.on("contentBlock", b => {
-        if (b.type === "server_tool_use") {
-          panelSend("chat-status", "웹 검색 중…");
-        }
-      });
-      const final = await stream.finalMessage();
-      chatHistory.push({ role: "assistant", content: final.content });
-      if (final.stop_reason !== "pause_turn") {
-        break;
-      }
-    }
-    panelSend("chat-done");
-  } catch (err) {
-    const { Anthropic } = require("@anthropic-ai/sdk");
-    if (err instanceof Anthropic.AuthenticationError) {
-      anthropicClient = null;
-      panelSend("chat-need-key");
-      panelSend("chat-error", "API 키가 유효하지 않습니다.");
-    } else {
-      panelSend("chat-error", err && err.message ? err.message : String(err));
-    }
-    // drop the failed turn so a retry starts clean
-    if (chatHistory[chatHistory.length - 1]?.role === "user") {
-      chatHistory.pop();
-    }
-  } finally {
-    chatBusy = false;
   }
 }
 
 function registerIpc() {
   ipcMain.on("b-nav", (_e, dir) => {
-    if (!view) {
+    const t = activeTab();
+    if (!t) {
       return;
     }
-    const nav = view.webContents.navigationHistory;
+    const nav = t.view.webContents.navigationHistory;
     if (dir === "back" && nav.canGoBack()) {
       nav.goBack();
     } else if (dir === "forward" && nav.canGoForward()) {
@@ -244,28 +245,16 @@ function registerIpc() {
     }
   });
   ipcMain.on("b-navigate", (_e, url) => {
-    if (view && typeof url === "string") {
-      view.webContents.loadURL(normalizeUrl(url)).catch(() => {});
+    const t = activeTab();
+    if (t && typeof url === "string") {
+      t.view.webContents.loadURL(normalizeUrl(url)).catch(() => {});
     }
   });
-  ipcMain.on("b-reload", () => view && view.webContents.reload());
-  ipcMain.on("b-focus-view", () => view && view.webContents.focus());
-  ipcMain.on("b-chat-toggle", (_e, isOpen) => {
-    chatOpen = Boolean(isOpen);
-    layout();
-  });
-  ipcMain.on("b-chat-send", (_e, text) => {
-    if (typeof text === "string" && text.trim()) {
-      runChat(text.trim());
-    }
-  });
-  ipcMain.on("b-chat-set-key", (_e, key) => {
-    if (typeof key === "string" && key.trim()) {
-      deps.settings.claudeApiKey = key.trim();
-      deps.save();
-      anthropicClient = null;
-    }
-  });
+  ipcMain.on("b-reload", () => activeTab()?.view.webContents.reload());
+  ipcMain.on("b-focus-view", () => activeTab()?.view.webContents.focus());
+  ipcMain.on("b-tab-new", () => win && newTab(HOME_URL));
+  ipcMain.on("b-tab-close", (_e, id) => closeTab(id));
+  ipcMain.on("b-tab-activate", (_e, id) => activate(id));
 }
 
 module.exports = { init, open };

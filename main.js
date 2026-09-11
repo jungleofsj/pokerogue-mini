@@ -35,6 +35,8 @@ const {
 const fs = require("fs");
 const path = require("path");
 const browser = require("./browser");
+const chat = require("./chat");
+const pickup = require("./pickup");
 
 const HOME_URL = "https://pokerogue.net/";
 // Present as a plain Chrome browser so Google/Discord OAuth login pages don't
@@ -43,6 +45,8 @@ const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const DEFAULT_TOOLBAR_HEIGHT = 26;
 let toolbarHeight = DEFAULT_TOOLBAR_HEIGHT;
+const CHAT_PANEL_W = 280;
+let chatPanelOpen = false;
 const BRIGHTNESS_MIN = 20;
 const OPACITY_MIN = 30;
 const STEP = 5;
@@ -258,7 +262,12 @@ function layoutGameView() {
     return;
   }
   const [width, height] = win.getContentSize();
-  gameView.setBounds({ x: 0, y: toolbarHeight, width, height: Math.max(0, height - toolbarHeight) });
+  gameView.setBounds({
+    x: 0,
+    y: toolbarHeight,
+    width: Math.max(0, width - (chatPanelOpen ? CHAT_PANEL_W : 0)),
+    height: Math.max(0, height - toolbarHeight),
+  });
 }
 
 function createWindow() {
@@ -385,6 +394,11 @@ if (!gotLock) {
   ipcMain.on("preset", togglePreset);
   ipcMain.on("focus-game", () => gameView && gameView.webContents.focus());
   ipcMain.on("open-browser", (_e, url, focusAddress) => browser.open(url, focusAddress));
+  ipcMain.on("chat-toggle", (_e, isOpen) => {
+    chatPanelOpen = Boolean(isOpen);
+    layoutGameView();
+  });
+  ipcMain.handle("pickup-week", () => pickup.getUpcoming(7));
   ipcMain.on("toolbar-height", (_e, h) => {
     const clamped = Math.min(Math.max(Math.round(h), 20), 120);
     if (clamped !== toolbarHeight) {
@@ -396,6 +410,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     loadSettings();
     browser.init({ settings, save: saveSettings });
+    chat.init({ settings, save: saveSettings, target: () => (win ? win.webContents : null) });
     createWindow();
     createTray();
     globalShortcut.register("Control+Alt+P", toggleBossKey);

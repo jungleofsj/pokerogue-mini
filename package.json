@@ -21,6 +21,9 @@
       "preload.js",
       "toolbar.html",
       "browser.js",
+      "chat.js",
+      "pickup.js",
+      "pickup-data.json",
       "browser-preload.js",
       "browser.html",
       "web-preload.js"
