@@ -72,6 +72,7 @@ let settings = {
   alwaysOnTop: false,
   claudeApiKey: "",
   chatPanelWidth: 240,
+  panelBrightness: 100, // chat panel brightness, independent of the game
 };
 
 function loadSettings() {
@@ -103,6 +104,7 @@ function loadSettings() {
   settings.opacity = Math.min(Math.max(settings.opacity || 100, OPACITY_MIN), 100);
   settings.muted = settings.muted !== false;
   settings.chatPanelWidth = Math.min(Math.max(settings.chatPanelWidth || 240, PANEL_W_MIN), PANEL_W_MAX);
+  settings.panelBrightness = Math.min(Math.max(settings.panelBrightness || 100, BRIGHTNESS_MIN), 100);
 }
 
 function saveSettings() {
@@ -335,6 +337,7 @@ function updateSettings(patch) {
   settings.brightness = Math.min(Math.max(settings.brightness, BRIGHTNESS_MIN), 100);
   settings.opacity = Math.min(Math.max(settings.opacity, OPACITY_MIN), 100);
   settings.chatPanelWidth = Math.min(Math.max(settings.chatPanelWidth, PANEL_W_MIN), PANEL_W_MAX);
+  settings.panelBrightness = Math.min(Math.max(settings.panelBrightness, BRIGHTNESS_MIN), 100);
   if (settings.tone !== "none") {
     settings.lastTone = settings.tone;
   }

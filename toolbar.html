@@ -179,6 +179,13 @@
     font-size: 11px; line-height: 1.5;
     user-select: text;
   }
+  /* subtle, non-jarring scrollbars */
+  #msgs::-webkit-scrollbar, #pickupRail::-webkit-scrollbar { width: 7px; }
+  #msgs::-webkit-scrollbar-thumb, #pickupRail::-webkit-scrollbar-thumb {
+    background: #2c2c33; border-radius: 4px;
+  }
+  #msgs::-webkit-scrollbar-thumb:hover, #pickupRail::-webkit-scrollbar-thumb:hover { background: #3a3a42; }
+  #msgs::-webkit-scrollbar-track, #pickupRail::-webkit-scrollbar-track { background: transparent; }
   .m { margin-bottom: 8px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
   .m.user {
     color: #b0b0b6; background: #202028;
@@ -224,6 +231,9 @@
       <span class="chip" id="chip-opacity" title="창 투명도 (Ctrl+←/→) — 휠 또는 ▲▼로 조절">
         <span class="k">투</span><span class="v"></span><span class="steps"></span>
       </span>
+      <span class="chip" id="chip-panelBrightness" title="질문 패널 밝기 (게임과 별도) — 휠 또는 ▲▼로 조절">
+        <span class="k">패</span><span class="v"></span><span class="steps"></span>
+      </span>
       <button id="reload" title="현재 탭 새로고침 (Ctrl+R)">⟳</button>
       <button id="chat" title="Claude 공략 도우미 + 주간 픽업 패널">✳</button>
       <button id="mute" title="음소거 (Ctrl+M) — 창이 비활성화되면 자동 음소거"></button>
@@ -261,7 +271,7 @@
   let state = null;
 
   // value chips: mouse wheel or hover ▲▼ buttons adjust in 5% steps
-  for (const key of ["toneAmount", "brightness", "opacity"]) {
+  for (const key of ["toneAmount", "brightness", "opacity", "panelBrightness"]) {
     const chip = $("chip-" + key);
     const bump = d => state && window.mini.set({ [key]: state[key] + d });
     chip.addEventListener("wheel", e => {
@@ -308,14 +318,17 @@
     $("chip-toneAmount").querySelector(".v").textContent = s.toneAmount + "%";
     $("chip-brightness").querySelector(".v").textContent = s.brightness + "%";
     $("chip-opacity").querySelector(".v").textContent = s.opacity + "%";
+    $("chip-panelBrightness").querySelector(".v").textContent = s.panelBrightness + "%";
     $("top").classList.toggle("on", s.alwaysOnTop);
     $("mute").classList.toggle("on", s.muted);
     $("mute").textContent = s.muted ? "🔇" : "🔊";
     if (!resizing) {
       $("chatMain").style.width = s.chatPanelWidth + "px";
     }
-    // dim the chrome (toolbar + panel) together with the game
-    document.body.style.filter = `grayscale(1) brightness(${s.brightness / 100})`;
+    // toolbar/tabs dim with the game; the chat panel has its own brightness
+    document.body.style.filter = "grayscale(1)";
+    $("chrome").style.filter = `brightness(${s.brightness / 100})`;
+    $("chatPanel").style.filter = `brightness(${s.panelBrightness / 100})`;
   });
 
   // ---- tabs ----
