@@ -76,7 +76,9 @@ let settings = {
 function loadSettings() {
   let stored = {};
   try {
-    stored = JSON.parse(fs.readFileSync(settingsPath(), "utf8"));
+    // strip a UTF-8 BOM if present (e.g. from an external editor) so JSON.parse
+    // doesn't choke and silently discard all settings
+    stored = JSON.parse(fs.readFileSync(settingsPath(), "utf8").replace(/^﻿/, ""));
   } catch {
     /* first run */
   }

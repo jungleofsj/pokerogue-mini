@@ -27,14 +27,15 @@ function getClient() {
   if (client) {
     return client;
   }
-  const { Anthropic } = require("@anthropic-ai/sdk");
-  const opts = {};
-  if (deps.settings.claudeApiKey) {
-    opts.apiKey = deps.settings.claudeApiKey;
+  const key = deps.settings.claudeApiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    // No usable key anywhere -> caller shows the key-input prompt.
+    const err = new Error("no-key");
+    err.noKey = true;
+    throw err;
   }
-  // With no stored key, the SDK resolves ANTHROPIC_API_KEY etc. from the
-  // environment; if nothing is found the constructor throws.
-  client = new Anthropic(opts);
+  const { Anthropic } = require("@anthropic-ai/sdk");
+  client = new Anthropic({ apiKey: key });
   return client;
 }
 
