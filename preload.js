@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("mini", {
   pickupWeek: () => ipcRenderer.invoke("pickup-week"),
   chatSend: text => ipcRenderer.send("chat-send", text),
   setKey: key => ipcRenderer.send("chat-set-key", key),
+  setContext: text => ipcRenderer.send("chat-set-context", text),
+  getContext: () => ipcRenderer.invoke("chat-get-context"),
   onChatDelta: cb => ipcRenderer.on("chat-delta", (_e, t) => cb(t)),
   onChatStatus: cb => ipcRenderer.on("chat-status", (_e, t) => cb(t)),
   onChatDone: cb => ipcRenderer.on("chat-done", cb),

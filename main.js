@@ -46,6 +46,7 @@ const DEFAULT_CHROME_HEIGHT = 50;
 let chromeHeight = DEFAULT_CHROME_HEIGHT;
 const PANEL_W_MIN = 160;
 const PANEL_W_MAX = 480;
+const PICKUP_RAIL_W = 34; // must match #pickupRail width in toolbar.html
 let chatPanelOpen = false;
 const BRIGHTNESS_MIN = 20;
 const OPACITY_MIN = 30;
@@ -171,7 +172,7 @@ function layoutViews() {
     return;
   }
   const [w, h] = win.getContentSize();
-  const x = chatPanelOpen ? settings.chatPanelWidth : 0;
+  const x = chatPanelOpen ? PICKUP_RAIL_W + settings.chatPanelWidth : 0;
   const b = { x, y: chromeHeight, width: Math.max(0, w - x), height: Math.max(0, h - chromeHeight) };
   for (const v of allViews()) {
     v.setBounds(b);
