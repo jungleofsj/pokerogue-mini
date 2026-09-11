@@ -152,19 +152,19 @@
     z-index: 5;
   }
   #resizer:hover, #resizer.drag { background: #33333c; }
-  /* compact pickup list: one slim row per day */
-  #pickup { border-bottom: 1px solid #232327; padding: 4px 6px; flex: none; }
+  /* ultra-compact pickup list: date+icon only, names in the tooltip */
+  #pickup { border-bottom: 1px solid #232327; padding: 2px 4px; flex: none; }
   #pickupList { display: flex; flex-direction: column; }
   .pk {
-    display: flex; align-items: center; gap: 6px;
-    padding: 0 3px; border-radius: 4px;
+    display: flex; align-items: center; gap: 2px;
+    height: 17px;
+    padding: 0 2px; border-radius: 3px;
+    width: fit-content;
   }
   .pk.today { background: #242430; }
-  .pk img { width: 20px; height: 20px; image-rendering: pixelated; flex: none; }
-  .pk .d { width: 28px; font-size: 9px; color: #5c5c63; font-variant-numeric: tabular-nums; flex: none; }
+  .pk img { width: 16px; height: 16px; image-rendering: pixelated; flex: none; }
+  .pk .d { width: 23px; font-size: 8.5px; color: #5c5c63; font-variant-numeric: tabular-nums; flex: none; }
   .pk.today .d { color: #9a9ab0; }
-  .pk .n { font-size: 10px; color: #7e7e86; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pk.today .n { color: #b0b0bc; }
   #msgs {
     flex: 1; overflow-y: auto;
     padding: 7px;
@@ -434,10 +434,7 @@
         const img = document.createElement("img");
         img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
         img.alt = p.ko;
-        const n = document.createElement("span");
-        n.className = "n";
-        n.textContent = p.ko;
-        cell.append(d, img, n);
+        cell.append(d, img);
         list.appendChild(cell);
       }
       pickupLoadedDay = today;
