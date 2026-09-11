@@ -104,7 +104,21 @@ function loadSettings() {
 
 function saveSettings() {
   try {
-    fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+    // Don't clobber a key that was set on disk (e.g. edited externally) with an
+    // empty in-memory one — preserve the disk key when we have none.
+    const out = { ...settings };
+    if (!out.claudeApiKey) {
+      try {
+        const disk = JSON.parse(fs.readFileSync(settingsPath(), "utf8"));
+        if (disk.claudeApiKey) {
+          out.claudeApiKey = disk.claudeApiKey;
+          settings.claudeApiKey = disk.claudeApiKey;
+        }
+      } catch {
+        /* no prior file */
+      }
+    }
+    fs.writeFileSync(settingsPath(), JSON.stringify(out, null, 2));
   } catch {
     /* not fatal */
   }
