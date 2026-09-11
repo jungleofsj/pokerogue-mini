@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("mini", {
   onFocusAddress: cb => ipcRenderer.on("focus-address", cb),
   // Claude chat panel
   chatToggle: open => ipcRenderer.send("chat-toggle", open),
+  panelWidth: w => ipcRenderer.send("panel-width", w),
   pickupWeek: () => ipcRenderer.invoke("pickup-week"),
   chatSend: text => ipcRenderer.send("chat-send", text),
   setKey: key => ipcRenderer.send("chat-set-key", key),

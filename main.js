@@ -44,7 +44,8 @@ const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const DEFAULT_CHROME_HEIGHT = 50;
 let chromeHeight = DEFAULT_CHROME_HEIGHT;
-const CHAT_PANEL_W = 240;
+const PANEL_W_MIN = 160;
+const PANEL_W_MAX = 480;
 let chatPanelOpen = false;
 const BRIGHTNESS_MIN = 20;
 const OPACITY_MIN = 30;
@@ -69,6 +70,7 @@ let settings = {
   muted: true,
   alwaysOnTop: false,
   claudeApiKey: "",
+  chatPanelWidth: 240,
 };
 
 function loadSettings() {
@@ -97,6 +99,7 @@ function loadSettings() {
   settings.brightness = Math.min(Math.max(settings.brightness, BRIGHTNESS_MIN), 100);
   settings.opacity = Math.min(Math.max(settings.opacity || 100, OPACITY_MIN), 100);
   settings.muted = settings.muted !== false;
+  settings.chatPanelWidth = Math.min(Math.max(settings.chatPanelWidth || 240, PANEL_W_MIN), PANEL_W_MAX);
 }
 
 function saveSettings() {
@@ -152,7 +155,7 @@ function layoutViews() {
     return;
   }
   const [w, h] = win.getContentSize();
-  const x = chatPanelOpen ? CHAT_PANEL_W : 0;
+  const x = chatPanelOpen ? settings.chatPanelWidth : 0;
   const b = { x, y: chromeHeight, width: Math.max(0, w - x), height: Math.max(0, h - chromeHeight) };
   for (const v of allViews()) {
     v.setBounds(b);
@@ -314,8 +317,12 @@ function updateSettings(patch) {
   settings.toneAmount = Math.min(Math.max(settings.toneAmount, 0), 100);
   settings.brightness = Math.min(Math.max(settings.brightness, BRIGHTNESS_MIN), 100);
   settings.opacity = Math.min(Math.max(settings.opacity, OPACITY_MIN), 100);
+  settings.chatPanelWidth = Math.min(Math.max(settings.chatPanelWidth, PANEL_W_MIN), PANEL_W_MAX);
   if (settings.tone !== "none") {
     settings.lastTone = settings.tone;
+  }
+  if ("chatPanelWidth" in patch) {
+    layoutViews();
   }
   if ("alwaysOnTop" in patch && win) {
     win.setAlwaysOnTop(settings.alwaysOnTop);
@@ -548,6 +555,13 @@ if (!gotLock) {
   ipcMain.on("chat-toggle", (_e, isOpen) => {
     chatPanelOpen = Boolean(isOpen);
     layoutViews();
+  });
+  // live (unsaved) panel width while the user drags the resizer
+  ipcMain.on("panel-width", (_e, w) => {
+    if (typeof w === "number") {
+      settings.chatPanelWidth = Math.min(Math.max(Math.round(w), PANEL_W_MIN), PANEL_W_MAX);
+      layoutViews();
+    }
   });
   ipcMain.handle("pickup-week", () => pickup.getUpcoming(7));
   ipcMain.on("tab-new", () => newWebTab());
